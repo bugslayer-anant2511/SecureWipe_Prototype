@@ -1,53 +1,22 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const openWipeBtn = document.getElementById("open-wipe");
-  const startWipeBtn = document.getElementById("start-wipe");
-  const confirmModal = document.getElementById("confirm-modal");
-  const modalConfirm = document.getElementById("modal-confirm");
-  const modalCancel = document.getElementById("modal-cancel");
+  const startBtn = document.getElementById("start-wipe");
   const statusText = document.getElementById("status-text");
   const progressWrap = document.querySelector(".progress-wrap");
-  const progressBar = document.getElementById("progress");
   const progressFill = document.querySelector(".progress-fill");
   const statusLog = document.getElementById("status-log");
   const certificateArea = document.getElementById("certificate-area");
-  const certJson = document.getElementById("certificate-json");
   const downloadCertBtn = document.getElementById("download-cert");
-  const copyCertBtn = document.getElementById("copy-cert");
   const deviceSelect = document.getElementById("device-select");
   const methodSelect = document.getElementById("method-select");
 
-  openWipeBtn?.addEventListener("click", () => {
-    document.querySelector("#wipe")?.scrollIntoView({ behavior: "smooth" });
-    // optional focus
-    deviceSelect.focus();
+  startBtn.addEventListener("click", async () => {
+    const device = deviceSelect.value;
+    const method = methodSelect.value;
+
+    await runWipeSimulation(device, method);
   });
 
-  startWipeBtn.addEventListener("click", () => {
-    // show confirmation modal
-    const device = deviceSelect.options[deviceSelect.selectedIndex].text;
-    const method = methodSelect.options[methodSelect.selectedIndex].text;
-    document.getElementById(
-      "confirm-desc"
-    ).textContent = `You are about to run "${method}" on ${device}. This action is irreversible. Continue?`;
-    confirmModal.setAttribute("aria-hidden", "false");
-  });
-
-  modalCancel.addEventListener("click", () => {
-    confirmModal.setAttribute("aria-hidden", "true");
-  });
-
-  modalConfirm.addEventListener("click", () => {
-    confirmModal.setAttribute("aria-hidden", "true");
-    runWipeSimulation();
-  });
-
-  // Cancel if user clicks outside modal
-  confirmModal.addEventListener("click", (e) => {
-    if (e.target === confirmModal)
-      confirmModal.setAttribute("aria-hidden", "true");
-  });
-
-  function runWipeSimulation() {
+  async function runWipeSimulation(device, method) {
     // Reset UI
     statusText.textContent = "Starting wipe...";
     progressWrap.hidden = false;
@@ -55,13 +24,9 @@ document.addEventListener("DOMContentLoaded", () => {
     statusLog.innerHTML = "";
     certificateArea.hidden = true;
 
-    const device = deviceSelect.value;
-    const method = methodSelect.value;
-
-    // steps simulate different durations
     const steps = [
       "Initializing wipe environment",
-      "Verifying target device and partition table",
+      "Verifying device and partition table",
       method === "nist"
         ? "Executing NIST SP 800-88 Purge..."
         : method === "cryptographic"
@@ -72,96 +37,87 @@ document.addEventListener("DOMContentLoaded", () => {
       "Finalizing",
     ];
 
-    let progress = 0;
-    let stepIndex = 0;
-    const stepDuration = 1200; 
-    function logStep(msg) {
+    const durations = [800, 1000, 2000, 1200, 1500, 800];
+
+    const logStep = (msg) => {
       const li = document.createElement("li");
       li.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
       statusLog.prepend(li);
+      statusText.textContent = msg;
+    };
+
+    // Iterate steps sequentially
+    for (let i = 0; i < steps.length; i++) {
+      logStep(steps[i]);
+      const progress = Math.min(95, Math.round(((i + 1) / steps.length) * 100));
+      progressFill.style.width = progress + "%";
+      await new Promise((r) => setTimeout(r, durations[i]));
     }
 
-    // iterate steps
-    const interval = setInterval(() => {
-      // advance step
-      if (stepIndex < steps.length) {
-        const msg = steps[stepIndex];
-        logStep(msg);
-        statusText.textContent = msg;
-        progress = Math.min(
-          95,
-          Math.round(((stepIndex + 1) / steps.length) * 100)
-        );
-        progressFill.style.width = progress + "%";
-        progressBar.setAttribute("aria-valuenow", progress);
-        stepIndex++;
-      } else {
-        // finish
-        clearInterval(interval);
-        // small final animation
-        setTimeout(() => {
-          progressFill.style.width = "100%";
-          progressBar.setAttribute("aria-valuenow", 100);
-          statusText.textContent = "Wipe complete — verification successful.";
-          logStep("Wipe complete — verification successful.");
-          // show certificate
-          const certificate = generateCertificate(device, method, true);
-          showCertificate(certificate);
-        }, 800);
-      }
-    }, stepDuration);
-  }
+    // Finish wipe
+    progressFill.style.width = "100%";
+    statusText.textContent = "Wipe complete — verification successful.";
+    logStep("Wipe complete — verification successful.");
 
-  function generateCertificate(device, method, success = true) {
-    // simple certificate object — in production, server or secure HW key must sign it.
-    const id = "SW-" + Math.random().toString(16).slice(2, 14).toUpperCase();
-    const ts = new Date().toISOString();
-    // simulated verification hash
-    const verifyHash = btoa(id + "|" + ts).slice(0, 24);
+    // Generate signed certificate
+    const certObj = await generateSignedCertificate(device, method);
 
-    const cert = {
-      certificateId: id,
-      product: "SecureWipe",
-      productVersion: "1.0",
-      device: device,
-      method: method,
-      success: success,
-      issuedAt: ts,
-      verifier: "SecureWipe Offline Verifier",
-      verificationHash: verifyHash,
-      notes:
-        "This is a client-side simulated certificate. Real deployment must produce cryptographically-signed certificates.",
-    };
-    return cert;
-  }
-
-  function showCertificate(certObj) {
+    // Show PDF download button
     certificateArea.hidden = false;
-    const pretty = JSON.stringify(certObj, null, 2);
-    certJson.textContent = pretty;
-    // attach download handler
-    downloadCertBtn.onclick = () =>
-      downloadCertificate(pretty, `${certObj.certificateId}.json`);
-    copyCertBtn.onclick = () => {
-      navigator.clipboard
-        ?.writeText(pretty)
-        .then(() => {
-          copyCertBtn.textContent = "Copied!";
-          setTimeout(() => (copyCertBtn.textContent = "Copy"), 1500);
-        })
-        .catch(() => alert("Copy failed — please copy manually."));
-    };
+    setupPDFDownload(certObj);
   }
 
-  function downloadCertificate(content, filename) {
-    const blob = new Blob([content], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+  async function generateSignedCertificate(device, method) {
+    const cert = {
+      product: "SecureWipe",
+      version: "1.0",
+      device,
+      method,
+      success: true,
+      issuedAt: new Date().toISOString(),
+    };
+
+    const enc = new TextEncoder();
+    const keyPair = await crypto.subtle.generateKey(
+      {
+        name: "RSASSA-PKCS1-v1_5",
+        modulusLength: 2048,
+        publicExponent: new Uint8Array([1, 0, 1]),
+        hash: "SHA-256",
+      },
+      true,
+      ["sign", "verify"]
+    );
+
+    const signatureBuffer = await crypto.subtle.sign(
+      { name: "RSASSA-PKCS1-v1_5" },
+      keyPair.privateKey,
+      enc.encode(JSON.stringify(cert))
+    );
+
+    const signature = btoa(
+      String.fromCharCode(...new Uint8Array(signatureBuffer))
+    );
+    return { ...cert, signature };
+  }
+
+  function setupPDFDownload(certObj) {
+    downloadCertBtn.onclick = () => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFontSize(16);
+      doc.text("SecureWipe Certificate", 20, 20);
+
+      doc.setFontSize(12);
+      let y = 35;
+      for (const [key, value] of Object.entries(certObj)) {
+        const lines = doc.splitTextToSize(`${key}: ${value}`, 170);
+        doc.text(lines, 20, y);
+        y += lines.length * 7;
+      }
+
+      doc.save(`SecureWipe_${certObj.issuedAt.replace(/[:.]/g, "-")}.pdf`);
+    };
   }
 });
