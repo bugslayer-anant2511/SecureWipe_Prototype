@@ -54,12 +54,212 @@
               organizations complete transparency, audit readiness, and peace of
               mind when retiring or recycling devices
             </p>
-            <div class="hero-ctas">
+            <!-- Start Wiping button -->
+            <button class="btn-primary" id="start-wipe-btn">
+              Start Wiping
+            </button>
+
+            <!-- Step 1: Download SecureWipe ISO -->
+            <section id="iso-section" hidden>
+              <div class="header">
+                <i class="fa-solid fa-shield-halved"></i>
+                <i
+                  id="iso-back-btn"
+                  class="fa-solid fa-arrow-left"
+                  style="
+                    position: absolute;
+                    top: 10px;
+                    left: 10px;
+                    cursor: pointer;
+                    padding: 5px;
+                  "
+                ></i>
+                <i
+                  id="iso-close-btn"
+                  class="fa-solid fa-xmark"
+                  style="
+                    position: absolute;
+                    top: 10px;
+                    right: 10px;
+                    cursor: pointer;
+                  "
+                ></i>
+              </div>
+              <h3>Step 1: Download SecureWipe OS</h3>
+              <p>Please download the SecureWipe bootable ISO to continue:</p>
+              <button class="btn-outline" id="download-iso">
+                Download ISO
+              </button>
+
+              <p id="iso-msg" style="display: none; color: green">
+                ISO downloaded successfully!
+              </p>
+              <p>Already downloaded? Proceed to the next step.</p>
+              <button class="btn-ghost" id="iso-next">Next</button>
+            </section>
+
+            <!-- Step 2: Download Ventoy -->
+            <section id="ventoy-section" hidden>
+              <div class="header">
+                <i class="fa-solid fa-shield-halved"></i>
+                <i
+                  id="ventoy-back-btn"
+                  class="fa-solid fa-arrow-left"
+                  style="
+                    position: absolute;
+                    top: 10px;
+                    left: 10px;
+                    cursor: pointer;
+                    padding: 5px;
+                  "
+                ></i>
+                <i
+                  id="ventoy-close-btn"
+                  class="fa-solid fa-xmark"
+                  style="
+                    position: absolute;
+                    top: 10px;
+                    right: 10px;
+                    cursor: pointer;
+                  "
+                ></i>
+              </div>
+              <h3>Step 2: Download Ventoy</h3>
+              <p>Now download Ventoy to make your USB bootable:</p>
+              <button class="btn-outline" id="download-ventoy">
+                Download Ventoy
+              </button>
+              <p id="ventoy-msg" style="display: none; color: green">
+                Ventoy downloaded successfully!
+              </p>
+              <button class="btn-ghost" id="ventoy-next" hidden>Next</button>
+            </section>
+            <!-- Step 3: USB Insert Instruction -->
+            <section id="usb-insert-section" hidden>
+              <div class="header">
+                <i class="fa-solid fa-shield-halved"></i>
+                <i
+                  id="usb-insert-back-btn"
+                  class="fa-solid fa-arrow-left"
+                  style="
+                    position: absolute;
+                    top: 10px;
+                    left: 10px;
+                    cursor: pointer;
+                    padding: 5px;
+                  "
+                ></i>
+                <i
+                  id="usb-insert-close-btn"
+                  class="fa-solid fa-xmark"
+                  style="
+                    position: absolute;
+                    top: 10px;
+                    right: 10px;
+                    cursor: pointer;
+                  "
+                ></i>
+              </div>
+              <h3>Insert your USB Drive</h3>
+              <p>
+                Please insert your USB drive to continue <br />
+                preparing SecureWipe bootable USB.
+              </p>
+              <button class="btn-outline" id="usb-insert-btn">
+                USB Inserted
+              </button>
+              <p id="usb-insert-msg" style="display: none; color: green">
+                USB detected successfully!
+              </p>
+            </section>
+            <!-- Step 4: Prepare USB -->
+            <section id="prep-section" hidden>
+              <div class="header">
+                <i class="fa-solid fa-shield-halved"></i>
+                <i
+                  id="prep-back-btn"
+                  class="fa-solid fa-arrow-left"
+                  style="
+                    position: absolute;
+                    top: 10px;
+                    left: 10px;
+                    cursor: pointer;
+                    padding: 5px;
+                  "
+                >
+                </i>
+                <i
+                  id="prep-close-btn"
+                  class="fa-solid fa-xmark"
+                  style="
+                    position: absolute;
+                    top: 10px;
+                    right: 10px;
+                    cursor: pointer;
+                  "
+                >
+                </i>
+              </div>
+              <h3>Step 4: Prepare USB</h3>
+              <p>Select your USB drive to copy Ventoy and SecureWipe ISO:</p>
+              <select id="usb-select">
+                <option value="usb1">USB Drive 1</option>
+                <option value="usb2">USB Drive 2</option>
+              </select>
+              <button class="btn-outline" id="copy-usb-btn">
+                Copy Files to USB
+              </button>
+
+              <!-- progress messages -->
+              <p id="prep-msg" style="display: none; color: green">
+                Copying files...
+              </p>
+
+              <!-- reboot instructions -->
+              <div
+                id="reboot-msg"
+                style="
+                  display: none;
+                  margin-top: 1rem;
+                  font-weight: 600;
+                  color: #0f172a;
+                  background: #eef2ff;
+                  padding: 0.8rem;
+                  border-radius: 8px;
+                "
+              >
+                Files copied successfully.<br />
+                Please <b>reboot your system</b> and press <b>ESC</b> or
+                <b>F2</b> during startup<br />
+                to enter the <b>Custom Wiping OS</b>.
+              </div>
+            </section>
+
+            <!-- <div id="st" class="hero-ctas">
               <a href="SecureWipe.iso" download="CustomWipeTool.iso">
                 <button class="btn-primary" id="open-wipe">Start Wiping</button>
               </a>
               <a class="btn-outline" href="#how">How it works</a>
             </div>
+            <section id="ventoy-section" hidden>
+              <i
+                class="fa-solid fa-xmark"
+                style="
+                  position: absolute;
+                  top: 10px;
+                  right: 10px;
+                  cursor: pointer;
+                "
+              ></i>
+              <h3>Download Tools</h3>
+              <p>
+                Your SecureWipe OS is ready. Please download Ventoy to make your
+                USB bootable:
+              </p>
+              <button class="btn-outline" id="download-ventoy">
+                Download Ventoy
+              </button>
+            </section> -->
             <small class="note"
               >Designed for HDD, SSD/NVMe and Android devices.</small
             >
@@ -255,6 +455,6 @@
     </div>
 
     <!-- Scripts -->
-    <script src="js/script.js" defer></script>
+    <script src="js/script1.js" defer></script>
   </body>
 </html>
