@@ -56,11 +56,15 @@ body {
 .logo {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
   text-decoration: none;
-  color: var(--text);
   font-weight: 700;
+  font-size: 1.2rem;
+  color: #0f172a; /* dark blue */
+  height: 70px; /* adjust size */
+  width: auto;
+  margin-right: 8px;
 }
+
 .logo .material-icons {
   background: linear-gradient(90deg, var(--primary), #6c5ce7);
   -webkit-background-clip: text;
