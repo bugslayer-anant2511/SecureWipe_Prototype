@@ -1,0 +1,401 @@
+#!/bin/bash
+# SecureWipe ISO Builder Script - AlmaLinux Version
+# Run this script to set up everything
+
+echo "=== SecureWipe ISO Builder for AlmaLinux ==="
+echo "Setting up project structure..."
+
+# Create project structure
+mkdir -p iso/boot/grub
+mkdir -p rootfs/bin
+
+# Create the init script (main program)
+cat > rootfs/init << 'EOF'
+#!/bin/sh
+
+# Mount essential filesystems
+mount -t proc none /proc
+mount -t sysfs none /sys
+mount -t devtmpfs none /dev
+
+clear
+echo "================================================"
+echo "       SecureWipe - Secure Data Wiping Tool    "
+echo "                 DevSquad - SIH 2025           "
+echo "================================================"
+echo ""
+echo "Initializing system..."
+sleep 2
+
+# Function to detect drives
+detect_drives() {
+    echo ""
+    echo "=== Detecting Storage Devices ==="
+    echo ""
+    
+    if [ -d /sys/block ]; then
+        for device in /sys/block/*; do
+            dev_name=$(basename $device)
+            # Skip loop devices and ram
+            if [[ ! $dev_name =~ ^(loop|ram) ]]; then
+                size=$(cat $device/size 2>/dev/null)
+                if [ "$size" -gt 0 ] 2>/dev/null; then
+                    size_gb=$((size * 512 / 1024 / 1024 / 1024))
+                    echo "  [+] Device: /dev/$dev_name - Size: ${size_gb}GB"
+                fi
+            fi
+        done
+    else
+        echo "  [!] No block devices found"
+    fi
+}
+
+# Function to show menu
+show_menu() {
+    echo ""
+    echo "=== Main Menu ==="
+    echo "1. Detect Drives"
+    echo "2. Wipe Drive (Simulation)"
+    echo "3. Generate Certificate"
+    echo "4. System Information"
+    echo "5. Reboot"
+    echo "6. Shutdown"
+    echo ""
+    echo -n "Select option: "
+}
+
+# Function to simulate wiping
+simulate_wipe() {
+    echo ""
+    echo "=== Drive Wipe Simulation ==="
+    echo -n "Enter device name (e.g., sda): "
+    read device
+    
+    if [ -z "$device" ]; then
+        echo "[!] No device specified"
+        return
+    fi
+    
+    echo ""
+    echo "WARNING: This will erase all data on /dev/$device"
+    echo -n "Type 'YES' to confirm: "
+    read confirm
+    
+    if [ "$confirm" != "YES" ]; then
+        echo "[!] Operation cancelled"
+        return
+    fi
+    
+    echo ""
+    echo "[*] Starting secure wipe simulation..."
+    echo "[*] Method: NIST SP 800-88 Compliant"
+    
+    for i in 1 2 3 4 5; do
+        echo "[*] Pass $i/5: Writing pattern..."
+        sleep 1
+    done
+    
+    echo "[*] Verifying erasure..."
+    sleep 1
+    echo "[✓] Wipe completed successfully!"
+    echo ""
+    
+    # Generate simple certificate
+    TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+    cat > /tmp/wipe_cert_${device}.txt << CERT
+=====================================
+    SECURE WIPE CERTIFICATE
+=====================================
+Device: /dev/$device
+Timestamp: $TIMESTAMP
+Method: NIST SP 800-88 (Simulated)
+Status: SUCCESS
+Verification: PASSED
+
+Digital Signature: [SIMULATED]
+SHA256: $(echo "$device$TIMESTAMP" | sha256sum | cut -d' ' -f1)
+=====================================
+CERT
+    
+    echo "[*] Certificate generated: /tmp/wipe_cert_${device}.txt"
+    echo ""
+    echo "Certificate Preview:"
+    cat /tmp/wipe_cert_${device}.txt
+}
+
+# Function to show system info
+show_info() {
+    echo ""
+    echo "=== System Information ==="
+    echo "Kernel: $(uname -r)"
+    echo "Architecture: $(uname -m)"
+    echo "Memory: $(free -m | grep Mem | awk '{print $2}') MB"
+    echo "CPU: $(grep "model name" /proc/cpuinfo | head -1 | cut -d: -f2 | xargs)"
+}
+
+# Main loop
+while true; do
+    show_menu
+    read option
+    
+    case $option in
+        1) detect_drives ;;
+        2) simulate_wipe ;;
+        3) echo "[*] Certificate generation integrated with wipe process" ;;
+        4) show_info ;;
+        5) echo "Rebooting..."; sleep 2; reboot -f ;;
+        6) echo "Shutting down..."; sleep 2; poweroff -f ;;
+        *) echo "[!] Invalid option" ;;
+    esac
+    
+    echo ""
+    echo -n "Press Enter to continue..."
+    read
+    clear
+done
+EOF
+
+chmod +x rootfs/init
+
+# Create initramfs creation script
+cat > create_initramfs.sh << 'EOF'
+#!/bin/bash
+
+echo "Creating initramfs..."
+cd rootfs
+
+# Create basic directory structure
+mkdir -p bin sbin etc proc sys dev tmp
+
+# Check if busybox exists
+if [ ! -f bin/busybox ]; then
+    echo "ERROR: busybox not found in bin/"
+    echo "Please download it first!"
+    exit 1
+fi
+
+chmod +x bin/busybox
+
+# Create symlinks for common commands
+cd bin
+for cmd in sh mount umount ls cat grep echo sleep free uname date sha256sum reboot poweroff awk basename; do
+    ln -sf busybox $cmd 2>/dev/null
+done
+cd ..
+
+# Create initramfs
+find . | cpio -o -H newc 2>/dev/null | gzip > ../iso/boot/initramfs.gz
+
+if [ $? -eq 0 ]; then
+    echo "✓ Initramfs created successfully!"
+else
+    echo "✗ Failed to create initramfs"
+    exit 1
+fi
+EOF
+
+chmod +x create_initramfs.sh
+
+# Create GRUB configuration
+cat > iso/boot/grub/grub.cfg << 'EOF'
+set timeout=10
+set default=0
+
+menuentry "SecureWipe - Secure Data Wiping Tool" {
+    linux /boot/vmlinuz quiet
+    initrd /boot/initramfs.gz
+}
+
+menuentry "SecureWipe - Debug Mode" {
+    linux /boot/vmlinuz debug
+    initrd /boot/initramfs.gz
+}
+EOF
+
+# Create AlmaLinux-specific build script
+cat > build.sh << 'EOF'
+#!/bin/bash
+echo "=== SecureWipe ISO Builder for AlmaLinux ==="
+
+# Check if running as root for package installation
+if [ "$EUID" -ne 0 ] && [ "$1" == "--install-deps" ]; then
+    echo "Please run with sudo for dependency installation"
+    echo "Usage: sudo ./build.sh --install-deps"
+    exit 1
+fi
+
+# Install dependencies if requested
+if [ "$1" == "--install-deps" ]; then
+    echo "[*] Installing dependencies..."
+    dnf install -y epel-release
+    dnf install -y xorriso grub2-tools grub2-efi-x64-modules mtools wget cpio gzip
+    echo "✓ Dependencies installed!"
+    echo ""
+    echo "Now run: ./build.sh"
+    exit 0
+fi
+
+# Check if grub2-mkrescue exists
+if ! command -v grub2-mkrescue &> /dev/null; then
+    echo "ERROR: grub2-mkrescue not found!"
+    echo "Please install dependencies first:"
+    echo "  sudo ./build.sh --install-deps"
+    exit 1
+fi
+
+# Step 1: Download BusyBox
+if [ ! -f rootfs/bin/busybox ]; then
+    echo "[*] Downloading BusyBox..."
+    wget -q --show-progress https://busybox.net/downloads/binaries/1.35.0-x86_64-linux-musl/busybox -O rootfs/bin/busybox
+    if [ $? -ne 0 ]; then
+        echo "✗ Failed to download BusyBox"
+        exit 1
+    fi
+    chmod +x rootfs/bin/busybox
+    echo "✓ BusyBox downloaded"
+else
+    echo "✓ BusyBox already exists"
+fi
+
+# Step 2: Download kernel
+if [ ! -f iso/boot/vmlinuz ]; then
+    echo "[*] Downloading Linux kernel..."
+    wget -q --show-progress http://tinycorelinux.net/13.x/x86_64/release/distribution_files/vmlinuz64 -O iso/boot/vmlinuz
+    if [ $? -ne 0 ]; then
+        echo "✗ Failed to download kernel"
+        exit 1
+    fi
+    echo "✓ Kernel downloaded"
+else
+    echo "✓ Kernel already exists"
+fi
+
+# Step 3: Create initramfs
+echo "[*] Creating initramfs..."
+./create_initramfs.sh
+if [ $? -ne 0 ]; then
+    echo "✗ Failed to create initramfs"
+    exit 1
+fi
+
+# Step 4: Build ISO
+echo "[*] Building ISO..."
+grub2-mkrescue -o securewipe.iso iso/ 2>/dev/null
+if [ $? -eq 0 ]; then
+    echo "✓ ISO created successfully!"
+    echo ""
+    echo "=== Build Complete! ==="
+    echo "ISO file: $(pwd)/securewipe.iso"
+    echo "Size: $(du -h securewipe.iso | cut -f1)"
+    echo ""
+    echo "To test in QEMU:"
+    echo "  qemu-system-x86_64 -cdrom securewipe.iso -m 512M"
+    echo ""
+    echo "To copy to Windows Desktop:"
+    echo "  cp securewipe.iso /mnt/c/Users/YOUR_USERNAME/Desktop/"
+else
+    echo "✗ Failed to create ISO"
+    exit 1
+fi
+EOF
+
+chmod +x build.sh
+
+# Create README
+cat > README.md << 'EOF'
+# SecureWipe ISO Builder - AlmaLinux
+
+## Quick Start
+
+### 1. Install Dependencies (First Time Only)
+```bash
+sudo ./build.sh --install-deps
+```
+
+### 2. Build the ISO
+```bash
+./build.sh
+```
+
+### 3. Find Your ISO
+The ISO will be at: `securewipe.iso` in this directory
+
+### 4. Copy to Windows
+```bash
+# Replace YOUR_USERNAME with your Windows username
+cp securewipe.iso /mnt/c/Users/YOUR_USERNAME/Desktop/
+```
+
+Or access via Windows Explorer:
+```
+\\wsl$\AlmaLinux\home\linux\securewipe-project\securewipe.iso
+```
+
+## Testing
+
+### In Linux (QEMU)
+```bash
+sudo dnf install qemu-kvm
+qemu-system-x86_64 -cdrom securewipe.iso -m 512M
+```
+
+### In Windows
+1. Use VirtualBox or VMware
+2. Create bootable USB with Rufus
+
+## Rebuilding
+```bash
+# To rebuild after changes
+./build.sh
+```
+
+## Project Structure
+```
+.
+├── build.sh              # Main build script
+├── create_initramfs.sh   # Creates initramfs
+├── iso/
+│   └── boot/
+│       ├── grub/
+│       │   └── grub.cfg
+│       ├── vmlinuz       # Linux kernel
+│       └── initramfs.gz  # Root filesystem
+├── rootfs/
+│   ├── init              # Main boot script
+│   └── bin/
+│       └── busybox       # Core utilities
+└── securewipe.iso        # Final ISO (after build)
+```
+
+## Features in MVP
+- ✓ Bootable Linux environment
+- ✓ Interactive menu system
+- ✓ Drive detection (simulation)
+- ✓ Secure wipe simulation
+- ✓ Certificate generation
+- ✓ System information display
+
+## Next Steps
+- Integrate real wiping tools (nwipe, hdparm)
+- Add Android device support (ADB/Fastboot)
+- Implement network transfer
+- Add web dashboard
+
+DevSquad - SIH 2025
+EOF
+
+echo ""
+echo "=== Setup Complete! ==="
+echo ""
+echo "Next steps:"
+echo "1. Install dependencies: sudo ./build.sh --install-deps"
+echo "2. Build ISO: ./build.sh"
+echo "3. Test or deploy your ISO"
+echo ""
+echo "Files created:"
+echo "  ✓ rootfs/init - Main bootable script"
+echo "  ✓ iso/boot/grub/grub.cfg - GRUB config"
+echo "  ✓ create_initramfs.sh - Initramfs builder"
+echo "  ✓ build.sh - Main build script"
+echo "  ✓ README.md - Documentation"
+echo ""
