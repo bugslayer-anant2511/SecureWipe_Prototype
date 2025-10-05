@@ -22,4 +22,4 @@ You can view the live demo here:
 
 ---
 ## Demo
-[Watch Demo Video](Assets/demoVideo.mp4)
+[Watch Demo Video](https://youtu.be/Dd5_kdvaX4A)
