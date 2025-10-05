@@ -21,3 +21,5 @@ You can view the live demo here:
 [Deployment Link](https://bugslayer-anant2511.github.io/SecureWipe_Prototype/)
 
 ---
+## Demo
+[Watch Demo Video](https://youtu.be/Dd5_kdvaX4A)
