@@ -378,6 +378,12 @@ body {
   .hero-grid {
     grid-template-columns: 1fr;
   }
+  .user-guide-grid {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+    overflow: hidden;
+    width: 100%;
+  }
   .features-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -392,6 +398,12 @@ body {
 @media (max-width: 600px) {
   .main-nav a {
     display: none;
+  }
+  .user-guide-grid {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+    overflow: hidden;
+    width: 100%;
   }
   .features-grid {
     grid-template-columns: 1fr;
@@ -441,4 +453,72 @@ body {
   color: white;
   padding: 0.6rem 3rem;
   border-radius: 10px;
+}
+.user-guide-grid {
+  display: flex;
+  justify-content: center;
+
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.demo {
+  width: 48%;
+  margin: 4px;
+}
+.guide {
+  width: 48%;
+  margin: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.pdf-viewer {
+  align-items: center;
+  width: 80%;
+  height: 80%;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 8px;
+}
+.download-btn {
+  width: 40%;
+  text-decoration: none;
+  color: white;
+  background: var(--primary);
+  padding: 0.5rem 0.8rem;
+  border-radius: 10px;
+  font-weight: 700;
+  border: 2px solid #0f62ff;
+}
+
+@media (max-width: 1080px) {
+  #iso-section,
+  #ventoy-section,
+  #prep-section,
+  #usb-insert-section {
+    width: 90%;
+    padding: 20px;
+  }
+  #download-iso,
+  #download-ventoy {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.9rem;
+  }
+  #iso-next,
+  #ventoy-next,
+  #prep-next,
+  #usb-insert-btn {
+    padding: 0.5rem 1.5rem;
+    font-size: 0.9rem;
+  }
+  .demo,
+  .guide {
+    width: 80%;
+    margin: 10px;
+  }
+  .download-btn {
+    width: 70%;
+    padding: 0.5 rem 0.8rem;
+    font-size: 1rem;
+  }
 }
